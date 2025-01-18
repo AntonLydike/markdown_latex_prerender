@@ -15,25 +15,32 @@ import xml.etree.ElementTree as etree
 from markdown_latex_prerender.render import render_latex
 
 # fuck you etree, why do I have to do this????
-etree.register_namespace('', 'http://www.w3.org/2000/svg')
+etree.register_namespace("", "http://www.w3.org/2000/svg")
 
 
-RE_SMART_DOLLAR_INLINE = r'(?:(?<!\\)((?:\\{2})+)(?=\$)|(?<!\\)(\$)(?!\s)((?:\\.|[^\\$])+?)(?<!\s)(?:\$))'
-RE_DOLLAR_INLINE =       r'(?:(?<!\\)((?:\\{2})+)(?=\$)|(?<!\\)(\$)((?:\\.|[^\\$])+?)(?:\$)))'
-RE_BRACKET_INLINE = r'(?:(?<!\\)((?:\\{2})+?)(?=\\\()|(?<!\\)(\\\()((?:\\[^)]|[^\\])+?)(?:\\\)))'
+RE_SMART_DOLLAR_INLINE = (
+    r"(?:(?<!\\)((?:\\{2})+)(?=\$)|(?<!\\)(\$)(?!\s)((?:\\.|[^\\$])+?)(?<!\s)(?:\$))"
+)
+RE_DOLLAR_INLINE = r"(?:(?<!\\)((?:\\{2})+)(?=\$)|(?<!\\)(\$)((?:\\.|[^\\$])+?)(?:\$)))"
+RE_BRACKET_INLINE = (
+    r"(?:(?<!\\)((?:\\{2})+?)(?=\\\()|(?<!\\)(\\\()((?:\\[^)]|[^\\])+?)(?:\\\)))"
+)
 
-RE_DOLLAR_BLOCK = r'((?P<dollar>[$]{2})(?P<math>((?:\\.|[^\\])+?))(?P=dollar))'
-RE_TEX_BLOCK = r'((?P<math2>\\begin\{(?P<env>[a-z]+\*?)\}(?:\\.|[^\\])+?\\end\{(?P=env)\}))'
-RE_BRACKET_BLOCK = r'(\\\[(?P<math3>(?:\\[^\]]|[^\\])+?)\\\])'
+RE_DOLLAR_BLOCK = r"((?P<dollar>[$]{2})(?P<math>((?:\\.|[^\\])+?))(?P=dollar))"
+RE_TEX_BLOCK = (
+    r"((?P<math2>\\begin\{(?P<env>[a-z]+\*?)\}(?:\\.|[^\\])+?\\end\{(?P=env)\}))"
+)
+RE_BRACKET_BLOCK = r"(\\\[(?P<math3>(?:\\[^\]]|[^\\])+?)\\\])"
+
 
 def _strip_namespace(element: etree.Element) -> etree.Element:
     """Recursively remove namespaces from an ElementTree element."""
     for elem in element.iter():
-        if '}' in elem.tag:
-            elem.tag = elem.tag.split('}', 1)[1]  # Remove the namespace
+        if "}" in elem.tag:
+            elem.tag = elem.tag.split("}", 1)[1]  # Remove the namespace
         for attr in tuple(elem.attrib):
-            if '}' in attr:
-                elem.attrib[attr.split('}', 1)[1]] = elem.attrib.pop(attr)
+            if "}" in attr:
+                elem.attrib[attr.split("}", 1)[1]] = elem.attrib.pop(attr)
     return element
 
 
@@ -43,11 +50,9 @@ def _render_math_to_svg(math, classes: list[str]) -> etree.Element:
     svg = render_latex(math, "")
     el = etree.fromstring(svg)
     el = _strip_namespace(el)
-    el.attrib['class'] = " ".join(
-        (*classes, *el.attrib.get('class', "").split(" "))
-    )
-    el.attrib['alt'] = math
-    el.attrib['title'] = math
+    el.attrib["class"] = " ".join((*classes, *el.attrib.get("class", "").split(" ")))
+    el.attrib["alt"] = math
+    el.attrib["title"] = math
     return el
 
 
@@ -56,12 +61,14 @@ class InlineLatexPattern(markdown.inlinepatterns.InlineProcessor):
     inline pattern handler for latex replacements.
     """
 
-    ESCAPED_BSLASH = '{}{}{}'.format(markdown.util.STX, ord('\\'), markdown.util.ETX)
+    ESCAPED_BSLASH = "{}{}{}".format(markdown.util.STX, ord("\\"), markdown.util.ETX)
 
     def __init__(self, pattern, config):
         super().__init__(pattern)
 
-    def handleMatch(self, m: re.Match[str], data) -> tuple[str | etree.Element, int, int]:
+    def handleMatch(
+        self, m: re.Match[str], data
+    ) -> tuple[str | etree.Element, int, int]:
         """Handle notations and switch them to something that will be more detectable in HTML."""
 
         # Handle escapes
@@ -70,14 +77,18 @@ class InlineLatexPattern(markdown.inlinepatterns.InlineProcessor):
         if not escapes and len(groups) > 3:
             escapes = groups[3]
         if escapes:
-            return escapes.replace('\\\\', self.ESCAPED_BSLASH), m.start(0), m.end(0)
+            return escapes.replace("\\\\", self.ESCAPED_BSLASH), m.start(0), m.end(0)
 
         # Handle Tex
         math = groups[2]
         if not math and len(groups) > 3:
             math = groups[5]
 
-        return _render_math_to_svg(math, ('latex-inline', 'latex')), m.start(0), m.end(0)
+        return (
+            _render_math_to_svg(math, ("latex-inline", "latex")),
+            m.start(0),
+            m.end(0),
+        )
 
 
 class BlockLatexProcessor(markdown.blockprocessors.BlockProcessor):
@@ -97,9 +108,9 @@ class BlockLatexProcessor(markdown.blockprocessors.BlockProcessor):
         """Default MathJax output."""
 
         grandparent = parent
-        parent = etree.SubElement(grandparent, 'figure', {'class': 'latex-figure'})
+        parent = etree.SubElement(grandparent, "figure", {"class": "latex-figure"})
 
-        svg_el = _render_math_to_svg(math.strip(), ('latex-block', 'latex'))
+        svg_el = _render_math_to_svg(math.strip(), ("latex-block", "latex"))
 
         parent.append(svg_el)
 
@@ -111,16 +122,15 @@ class BlockLatexProcessor(markdown.blockprocessors.BlockProcessor):
         blocks.pop(0)
 
         groups = self.match.groupdict()
-        math = groups.get('math', '')
+        math = groups.get("math", "")
         if not math:
-            math = groups.get('math2', '')
+            math = groups.get("math2", "")
         if not math:
-            math = groups.get('math3', '')
+            math = groups.get("math3", "")
 
         self.mathjax_output(parent, math)
 
         return True
-
 
 
 class LatexExtension(markdown.Extension):
@@ -128,14 +138,14 @@ class LatexExtension(markdown.Extension):
         self.config = {
             "smart_dollar": [True, "Use Arithmatex's smart dollars - Default True"],
             "block_syntax": [
-                ['dollar', 'square', 'begin'],
+                ["dollar", "square", "begin"],
                 'Enable block syntax: "dollar" ($$...$$), "square" (\\[...\\]), and '
-                '"begin" (\\begin{env}...\\end{env}). - Default: ["dollar", "square", "begin"]'
+                '"begin" (\\begin{env}...\\end{env}). - Default: ["dollar", "square", "begin"]',
             ],
             "inline_syntax": [
-                ['dollar', 'round'],
+                ["dollar", "round"],
                 'Enable inline syntax: "dollar" ($$...$$), "bracket" (\\(...\\)) '
-                ' - Default: ["dollar", "round"]'
+                ' - Default: ["dollar", "round"]',
             ],
         }
 
@@ -145,31 +155,35 @@ class LatexExtension(markdown.Extension):
         """Extend the inline and block processor objects."""
 
         md.registerExtension(self)
-        md.ESCAPED_CHARS = md.ESCAPED_CHARS + ['$']
+        md.ESCAPED_CHARS = md.ESCAPED_CHARS + ["$"]
 
         config = self.getConfigs()
 
         # Inline patterns
-        allowed_inline = set(config.get('inline_syntax'))
-        smart_dollar = config.get('smart_dollar')
+        allowed_inline = set(config.get("inline_syntax"))
+        smart_dollar = config.get("smart_dollar")
         inline_patterns = []
-        if 'dollar' in allowed_inline:
-            inline_patterns.append(RE_SMART_DOLLAR_INLINE if smart_dollar else RE_DOLLAR_INLINE)
-        if 'round' in allowed_inline:
+        if "dollar" in allowed_inline:
+            inline_patterns.append(
+                RE_SMART_DOLLAR_INLINE if smart_dollar else RE_DOLLAR_INLINE
+            )
+        if "round" in allowed_inline:
             inline_patterns.append(RE_BRACKET_INLINE)
         if inline_patterns:
-            inline = InlineLatexPattern('|'.join(inline_patterns), config)
-            md.inlinePatterns.register(inline, 'latex-inline', 189.9)
+            inline = InlineLatexPattern("|".join(inline_patterns), config)
+            md.inlinePatterns.register(inline, "latex-inline", 189.9)
 
         # Block patterns
-        allowed_block = set(config.get('block_syntax'))
+        allowed_block = set(config.get("block_syntax"))
         block_patterns = []
-        if 'dollar' in allowed_block:
+        if "dollar" in allowed_block:
             block_patterns.append(RE_DOLLAR_BLOCK)
-        if 'square' in allowed_block:
+        if "square" in allowed_block:
             block_patterns.append(RE_BRACKET_BLOCK)
-        if 'begin' in allowed_block:
+        if "begin" in allowed_block:
             block_patterns.append(RE_TEX_BLOCK)
         if block_patterns:
-            block = BlockLatexProcessor('(?s)^(?:{})[ ]*$'.format('|'.join(block_patterns)), config, md)
+            block = BlockLatexProcessor(
+                "(?s)^(?:{})[ ]*$".format("|".join(block_patterns)), config, md
+            )
             md.parser.blockprocessors.register(block, "latex-block", 79.9)
