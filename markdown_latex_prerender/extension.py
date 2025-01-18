@@ -12,7 +12,7 @@ import re
 
 import xml.etree.ElementTree as etree
 
-from markdown_latex_prerender.render import render_latex
+import markdown_latex_prerender.render
 
 # fuck you etree, why do I have to do this????
 etree.register_namespace("", "http://www.w3.org/2000/svg")
@@ -49,7 +49,7 @@ def _strip_namespace(element: etree.Element) -> etree.Element:
 def _render_math_to_svg(math, classes: list[str]) -> etree.Element:
     """Convert math expression to etree element"""
 
-    svg = render_latex(math, "")
+    svg = markdown_latex_prerender.render.render_latex(math, "")
     el = etree.fromstring(svg)
     el = _strip_namespace(el)
     el.attrib["class"] = " ".join((*classes, *el.attrib.get("class", "").split(" ")))
