@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "markdown-latex-prerender"
-version = "0.1.0"
+version = "0.1.1"
 description = "An extension to python-markdown that replaces inline latex with prerendered SVGs"
 authors = ["Anton Lydike <me@antonlydike.de>"]
 license = "MIT"
